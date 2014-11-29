@@ -1,7 +1,7 @@
-// Package httpattempts provides retryable, failure
+// Package mediate provides retryable, failure
 // tolerant and rate limited HTTP Transport / RoundTripper interfaces
 // for all net.Http client users.
-package httpattempts
+package mediate
 
 import (
 	"net/http"
