@@ -17,6 +17,10 @@ func cloneRequest(r *http.Request) *http.Request {
 	return r2
 }
 
+type canceler interface {
+	CancelRequest(*http.Request)
+}
+
 type fixedRetries struct {
 	underlying http.RoundTripper
 	retriesAllowed int
@@ -29,6 +33,13 @@ func FixedRetries(count int, transport http.RoundTripper) http.RoundTripper {
 		transport = http.DefaultTransport
 	}
 	return &fixedRetries{underlying: transport, retriesAllowed: count}
+}
+
+func (t *fixedRetries) CancelRequest(req *http.Request) {
+	tr, ok := t.underlying.(canceler)
+	if ok {
+		tr.CancelRequest(req)
+	}
 }
 
 func (t *fixedRetries) RoundTrip(req *http.Request) (*http.Response, error) {
