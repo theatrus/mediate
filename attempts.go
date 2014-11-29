@@ -25,6 +25,9 @@ type fixedRetries struct {
 // Build a new FixedRetry transport - on any failure, the request will be retried
 // at most count times.
 func FixedRetries(count int, transport http.RoundTripper) http.RoundTripper {
+	if transport == nil {
+		transport = http.DefaultTransport
+	}
 	return &fixedRetries{underlying: transport, retriesAllowed: count}
 }
 
