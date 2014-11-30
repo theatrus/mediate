@@ -18,9 +18,8 @@ func (t *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 	t.Calls++
 	if t.RespondWithError == nil {
 		return t.RespondWith, nil
-	} else {
-		return nil, t.RespondWithError
 	}
+	return nil, t.RespondWithError
 }
 
 // An io.ReaderCloser which can return errors or zero length
@@ -32,9 +31,8 @@ type mockReaderCloser struct {
 func (m *mockReaderCloser) Read(p []byte) (n int, err error) {
 	if m.ReturnError {
 		return 0, io.ErrClosedPipe
-	} else {
-		return 0, io.EOF
 	}
+	return 0, io.EOF
 }
 
 func (m *mockReaderCloser) Close() error {
