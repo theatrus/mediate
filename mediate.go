@@ -86,6 +86,13 @@ func ReliableBody(transport http.RoundTripper) http.RoundTripper {
 	return &reliableBody{transport}
 }
 
+func (t *reliableBody) CancelRequest(req *http.Request) {
+	tr, ok := t.transport.(canceler)
+	if ok {
+		tr.CancelRequest(req)
+	}
+}
+
 func (t *reliableBody) RoundTrip(req *http.Request) (*http.Response, error) {
 	resp, err := t.transport.RoundTrip(req)
 	if err != nil {
