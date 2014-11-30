@@ -56,7 +56,8 @@ func (t *fixedRetries) RoundTrip(req *http.Request) (*http.Response, error) {
 	var lastError error
 	for retry := 0; retry < t.retriesAllowed; retry++ {
 		nreq := cloneRequest(req)
-		resp, lastError := t.transport.RoundTrip(nreq)
+		var resp *http.Response
+		resp, lastError = t.transport.RoundTrip(nreq)
 		if lastError == nil {
 			return resp, nil
 		}
