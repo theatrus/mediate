@@ -38,6 +38,10 @@ type fixedRetries struct {
 	retriesAllowed int
 }
 
+// FixedRetries will issue the same request up to count times, if
+// an explicit error (socket error, transport error) is returned
+// from the underlying RoundTripper. This implementation performs
+// no backoff and does not look at the http.Response status codes.
 func FixedRetries(count int, transport http.RoundTripper) http.RoundTripper {
 	if transport == nil {
 		transport = http.DefaultTransport
