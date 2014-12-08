@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"testing"
+	"time"
 )
 
 type mockRoundTripper struct {
@@ -90,4 +91,26 @@ func TestFixedRetries(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.Equal(t, rt.RespondWithError, err, "Errors didn't match")
 	assert.Equal(t, 4, rt.Calls, "Three retries")
+}
+
+func TestRateLimit(t *testing.T) {
+	_, rt := newMock()
+
+	rate := RateLimit(100, 1*time.Second, rt)
+	start := time.Now()
+
+	// Now generate 100 requests, which should complete
+	// in at least 1 second
+
+	for i := 0; i < 100; i++ {
+		req := &http.Request{}
+		_, err := rate.RoundTrip(req)
+		assert.Nil(t, err)
+		assert.Equal(t, i+1, rt.Calls, "One call")
+	}
+	end := time.Now()
+	diff := float64(end.Sub(start))
+	epsilon := float64(250 * time.Millisecond)
+
+	assert.InDelta(t, float64(1*time.Second), diff, epsilon, "Not within 10 seconds")
 }

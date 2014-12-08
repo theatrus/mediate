@@ -132,9 +132,9 @@ func (r *rateLimit) ticker() {
 	tick := time.NewTicker(r.quantum)
 	limit := r.requests
 	for {
-		limit--
 		select {
 		case r.limiter <- 0:
+			limit--
 			// Allow a request
 		case _ = <-tick.C:
 			// Expired? reset the counter
@@ -143,11 +143,12 @@ func (r *rateLimit) ticker() {
 		// Out of tokens? Wait until the timer expires
 		if limit <= 0 {
 			_ = <-tick.C
+			limit = r.requests
 		}
 	}
 }
 
 func (r *rateLimit) RoundTrip(req *http.Request) (*http.Response, error) {
 	_ = <-r.limiter
-	return r.RoundTrip(req)
+	return r.transport.RoundTrip(req)
 }
