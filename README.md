@@ -14,6 +14,8 @@ The following Golang adapters are designed to mix-in to the chain of
  * `ReliableBody`: consume the entire `http.Response.Body` into
  memory. If reading the body fails, the entire `http.RoundTripper`
  fails.
+ * `RateLimit`: allow only N requests per given interval T through,
+   blocking others.
 
 ## Example
 
