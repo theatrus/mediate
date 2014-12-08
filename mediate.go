@@ -133,7 +133,7 @@ func RateLimit(requests int, every time.Duration, transport http.RoundTripper) h
 	if requests < div {
 		div = 1
 	}
-	q := every / div
+	q := time.Duration(int64(every) / int64(div))
 
 	rl := &rateLimit{requests: requests / div,
 		quantum: q, transport: transport,
