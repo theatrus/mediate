@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 // cloneRequest returns a clone of the provided *http.Request.
@@ -106,4 +107,47 @@ func (t *reliableBody) RoundTrip(req *http.Request) (*http.Response, error) {
 	buf := bytes.NewReader(body)
 	resp.Body = ioutil.NopCloser(buf)
 	return resp, nil
+}
+
+/////////////////////////
+
+type rateLimit struct {
+	requests  int
+	quantum   time.Duration
+	transport http.RoundTripper
+	limiter   chan int
+}
+
+func RateLimit(requests int, every time.Duration, transport http.RoundTripper) http.RoundTripper {
+	q := every / 10
+	rl := &rateLimit{requests: requests / 10,
+		quantum: q, transport: transport,
+		limiter: make(chan int)}
+
+	go rl.ticker()
+	return rl
+}
+
+func (r *rateLimit) ticker() {
+	tick := time.NewTicker(r.quantum)
+	limit := r.requests
+	for {
+		limit--
+		select {
+		case r.limiter <- 0:
+			// Allow a request
+		case _ = <-tick.C:
+			// Expired? reset the counter
+			limit = r.requests
+		}
+		// Out of tokens? Wait until the timer expires
+		if limit <= 0 {
+			_ = <-tick.C
+		}
+	}
+}
+
+func (r *rateLimit) RoundTrip(req *http.Request) (*http.Response, error) {
+	_ = <-r.limiter
+	return r.RoundTrip(req)
 }
