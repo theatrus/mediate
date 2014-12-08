@@ -5,6 +5,7 @@ package mediate
 
 import (
 	"bytes"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -115,14 +116,29 @@ type rateLimit struct {
 	requests  int
 	quantum   time.Duration
 	transport http.RoundTripper
-	limiter   chan int
+	limiter   chan bool
+	done      chan bool
 }
 
+// RateLimit builds a RoundTripper which will permit up to
+// requests through every "every" duration to the passed transport.
+// Requests will be blocked on a channel receive. Currently, RateLimit
+// will split the internal into 10 quantums, and permit an integer
+// number of requests through in that interval.
+//
+// If there are less than 10 requests, the quantum will be made to match
+// the given interval.
 func RateLimit(requests int, every time.Duration, transport http.RoundTripper) http.RoundTripper {
-	q := every / 10
-	rl := &rateLimit{requests: requests / 10,
+	div := 10
+	if requests < div {
+		div = 1
+	}
+	q := every / div
+
+	rl := &rateLimit{requests: requests / div,
 		quantum: q, transport: transport,
-		limiter: make(chan int)}
+		limiter: make(chan bool),
+		done:    make(chan bool)}
 
 	go rl.ticker()
 	return rl
@@ -130,10 +146,17 @@ func RateLimit(requests int, every time.Duration, transport http.RoundTripper) h
 
 func (r *rateLimit) ticker() {
 	tick := time.NewTicker(r.quantum)
+	defer tick.Stop()
+	defer close(r.limiter)
+
 	limit := r.requests
 	for {
 		select {
-		case r.limiter <- 0:
+		case _, ok := <-r.done:
+			if !ok {
+				return
+			}
+		case r.limiter <- true:
 			limit--
 			// Allow a request
 		case _ = <-tick.C:
@@ -149,6 +172,14 @@ func (r *rateLimit) ticker() {
 }
 
 func (r *rateLimit) RoundTrip(req *http.Request) (*http.Response, error) {
-	_ = <-r.limiter
+	_, ok := <-r.limiter
+	if !ok {
+		return nil, errors.New("This rate limited transport has been closed.")
+	}
 	return r.transport.RoundTrip(req)
+}
+
+func (r *rateLimit) Close() {
+	// Close the done channel so the ticker picks it up
+	close(r.done)
 }
